@@ -26,21 +26,26 @@ def run(fold, df):
     testing_padded = pad_sequences(testing_sequences, maxlen = config.max_length, truncating = config.trunc_type)
     
     model = tf.keras.Sequential([
-        tf.keras.layers.Embedding(config.vocab_size, config.embedding_dim, input_length = config.max_length),
-        tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(6, activation = 'relu'),
+        tf.keras.layers.Embedding(config.vocab_size, 64),
+        tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences = True)),
+        tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32)),
+        tf.keras.layers.Dense(64, activation = 'relu'),
         tf.keras.layers.Dense(1, activation = 'sigmoid')
     ])
     
     model.compile(loss = 'binary_crossentropy', optimizer = 'adam', metrics = ['accuracy'])
     model.summary()
     
+    #Stop training if val_accuracy stops improving
+    es = tf.keras.callbacks.EarlyStopping(monitor = 'val_accuracy', mode = 'max', verbose = 1)
+    
     num_epochs = 10
     model.fit(padded,
               train_df["label"].values,
               epochs = num_epochs,
               validation_data = (testing_padded, val_df["label"].values),
-              verbose = 1)
+              verbose = 1,
+              callbacks = [es])
 
 if __name__ == "__main__":
     df = pd.read_csv(os.path.join(config.INPUT_PATH, r'train_folds.csv'))
